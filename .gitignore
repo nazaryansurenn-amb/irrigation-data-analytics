@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+chroma_db/
+models/
+outputs/
+project_backups/
+Knowledge database/
+water-management-agent/
+*.csv
+*.xlsx

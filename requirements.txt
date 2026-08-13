@@ -1,0 +1,8 @@
+streamlit
+pandas
+pyodbc
+matplotlib
+openai
+chromadb
+sentence-transformers
+pypdf
