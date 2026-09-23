@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile all sources
+        run: python -m compileall -q .
+
+      # The tests cover sql_safety.py, which needs only the standard library.
+      # The app's own dependencies (Streamlit, ChromaDB, pyodbc, a SQL Server
+      # and LM Studio) are not needed here.
+      - name: Install ruff and pytest
+        run: pip install ruff==0.16.* pytest
+
+      - name: Lint
+        run: ruff check . --output-format=github
+
+      - name: Unit tests
+        run: pytest -q
