@@ -8,6 +8,8 @@ import pyodbc
 import matplotlib.pyplot as plt
 from openai import OpenAI
 
+from sql_safety import validate_read_only_sql
+
 try:
     from rag_engine import (
         ingest_documents,
@@ -15,8 +17,6 @@ try:
         clear_vector_db,
         get_indexed_documents_count,
         format_retrieved_context,
-        KNOWLEDGE_BASE_DIR,
-        CHROMA_DB_DIR,
     )
     RAG_IMPORT_ERROR = None
 except Exception as rag_import_exception:
@@ -26,7 +26,6 @@ try:
     from agents import (
         AGENT_DEFINITIONS,
         AGENT_HISTORY_DIR,
-        AGENT_REPORTS_DIR,
         AGENT_TEAM_ORDER,
         build_agent_prompt,
         build_agent_team_synthesis_prompt,
@@ -41,8 +40,6 @@ try:
     from memory_engine import (
         DATABASE_CONTEXT_JSON_PATH,
         DATABASE_CONTEXT_MD_PATH,
-        MEMORY_DIR,
-        TASK_HISTORY_PATH,
         format_database_context_for_prompt,
         get_memory_stats,
         load_agent_task_history,
@@ -223,54 +220,6 @@ def load_selected_table_targets(table_targets_df, top_n):
 
     combined_df = pd.concat(loaded_frames, ignore_index=True, sort=False)
     return combined_df, load_errors
-
-
-def strip_sql_comments(sql_query):
-    sql_query = re.sub(r"/\*.*?\*/", " ", sql_query, flags=re.DOTALL)
-    sql_query = re.sub(r"--.*?$", " ", sql_query, flags=re.MULTILINE)
-    return sql_query
-
-
-def validate_read_only_sql(sql_query):
-    cleaned_query = strip_sql_comments(sql_query).strip()
-    normalized_query = re.sub(r"\s+", " ", cleaned_query).lower()
-
-    if not normalized_query:
-        return False, "The SQL query is empty."
-
-    if not (normalized_query.startswith("select ") or normalized_query.startswith("with ")):
-        return False, "Only SELECT queries are allowed."
-
-    if ";" in cleaned_query.rstrip(";"):
-        return False, "Only one SQL statement is allowed."
-
-    blocked_patterns = [
-        r"\binsert\b",
-        r"\bupdate\b",
-        r"\bdelete\b",
-        r"\bdrop\b",
-        r"\balter\b",
-        r"\bcreate\b",
-        r"\btruncate\b",
-        r"\bmerge\b",
-        r"\bexec\b",
-        r"\bexecute\b",
-        r"\bgrant\b",
-        r"\brevoke\b",
-        r"\bbackup\b",
-        r"\brestore\b",
-        r"\bdbcc\b",
-        r"\buse\b",
-        r"\binto\b",
-        r"\bxp_\w+",
-        r"\bsp_\w+",
-    ]
-
-    for pattern in blocked_patterns:
-        if re.search(pattern, normalized_query):
-            return False, "This query contains a blocked keyword or command."
-
-    return True, "Query is read-only."
 
 
 def clean_sql_candidate(candidate_text):

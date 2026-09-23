@@ -338,3 +338,31 @@ The project is designed to run locally:
 - Power BI CSV exports are written locally to `outputs/powerbi/`.
 
 The app does not modify SQL Server data. SQL usage is read-only.
+
+## SQL Safety
+
+Every query the model writes passes through `validate_read_only_sql` in
+`sql_safety.py` before it runs. It must be a single `SELECT` (or
+`WITH ... SELECT`). T-SQL does not need a semicolon between statements, so
+`SELECT 1 SHUTDOWN` is two statements. The check therefore also blocks every
+keyword that could start a second one (`SHUTDOWN`, `KILL`, `WAITFOR`,
+`DECLARE`, `SET`, ...), as well as `SELECT ... INTO`, `OPENROWSET`,
+`OPENQUERY`, `OPENDATASOURCE` and `xp_` / `sp_` procedures.
+
+Comments, strings and quoted identifiers are parsed the way SQL Server reads
+them. A keyword inside a string (`WHERE Status = 'in use'`) is therefore
+allowed, and a statement cannot hide behind a comment or quote trick.
+`tests/test_sql_safety.py` covers both directions.
+
+This check is a filter, not a security boundary. The app connects with
+Windows authentication (`Trusted_Connection=yes`), so it has whatever rights
+your Windows account has on SQL Server, which on a local install is usually
+sysadmin. For real read-only protection, run it under an account whose SQL
+Server login has only `db_datareader`.
+
+Run the tests:
+
+```bash
+pip install pytest
+pytest -q
+```
